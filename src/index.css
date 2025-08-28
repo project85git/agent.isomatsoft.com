@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+::-webkit-scrollbar{
+    display: none;
+}
+
+.sign-bg{
+    background:url(./assets/admin.jpeg);
+    background-size: cover;
+    height: 100vh,100wh;
+    background-repeat: no-repeat;
+  }

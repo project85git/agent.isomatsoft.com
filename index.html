@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Isomatsoft</title>
+    
+    <link rel="icon" type="image/webp" href="./src/assets/logo.webp" />
+    <link rel="icon" href="/favicon.png">
+    <meta name="theme-color" content="#000000"/>
+
+    <!-- Prevent caching -->
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx?v=${Date.now()}"></script>
+  </body>
+</html>
