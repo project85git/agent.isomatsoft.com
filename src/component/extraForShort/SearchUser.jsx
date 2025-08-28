@@ -1,57 +1,8 @@
-
-
-
-
-
-
-import { useToast } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { FaChevronDown, FaChevronRight, FaSearch } from "react-icons/fa";
-import { fetchGetRequest } from "../../api/api";
 
 
-// Step 1: Build hierarchy tree
-const buildHierarchy = (data) => {
-  const map = {};
-  const roots = [];
-
-  // Initialize all admins
-  data.forEach((admin) => {
-    map[admin.username] = { ...admin, children: [] };
-  });
-
-  // Link children to parents
-  data.forEach((admin) => {
-    if (map[admin.parent_admin_username]) {
-      map[admin.parent_admin_username].children.push(map[admin.username]);
-    } else {
-      roots.push(map[admin.username]); // top-level admins
-    }
-  });
-
-  return roots;
-};
-
-// Step 2: Transform hierarchy into GroupRow format
-const transformData = (nodes) => {
-  return nodes.map((node) => ({
-    group: `${node.username} (${(node.children?.length || 0) + (node.users?.length || 0)})`,
-    role: node.role_type,
-    amount: node.amount?.toFixed(2),
-    sub: [
-      ...transformData(node.children || []), // recursive admins
-      ...(node.users || []).map((user) => ({
-        group: `${user.username}`,
-        role: user.role_type,
-        amount: user.amount?.toFixed(2),
-        sub: [],
-      })),
-    ],
-  }));
-};
-
-// GroupRow Component
-const GroupRow = ({ item, level = 0 }) => {
+const GroupRow = ({ item, level = 0, mappedLevel }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hasSub = item.sub && item.sub.length > 0;
 
@@ -84,7 +35,7 @@ const GroupRow = ({ item, level = 0 }) => {
       {isOpen && hasSub && (
         <div>
           {item.sub.map((subItem, index) => (
-            <GroupRow key={index} item={subItem} level={level + 1} />
+            <GroupRow key={index} item={subItem} level={level + 1}  mappedLevel={mappedLevel}/>
           ))}
         </div>
       )}
@@ -93,73 +44,7 @@ const GroupRow = ({ item, level = 0 }) => {
 };
 
 // Search Component
-const SearchUser = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [rawData, setRawData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const toast = useToast()
-  const filterData = (data, term) => {
-    if (!term) return data;
-    const lowerTerm = term.toLowerCase();
-    return data
-      .map((group) => {
-        const matchesGroup =
-          group.group.toLowerCase().includes(lowerTerm) ||
-          group.role.toLowerCase().includes(lowerTerm);
-        const filteredSub = filterData(group.sub || [], term);
-        if (matchesGroup || filteredSub.length > 0) {
-          return { ...group, sub: filteredSub };
-        }
-        return null;
-      })
-      .filter(Boolean);
-  };
-
-  const getHierarchyData = async (e) => {
-
-      try {
-        const url = `${import.meta.env.VITE_API_URL}/api/admin/get-hierarchy-data`;
-        const response = await fetchGetRequest(url);
-        toast({
-          title: response.message,
-          status: "success",
-          duration: 2000,
-          position: "top",
-          isClosable: true,
-        });
-        
-        setLoading(false);
-        setRawData(response.data)
-      } catch (error) {
-        toast({
-          title: error?.response?.data?.message || "Something went wrong",
-          status: "error",
-          duration: 2000,
-          position: "top",
-          isClosable: true,
-        });
-        setLoading(false);
-      
-    }
-  };
-
-useEffect(()=>{
-  getHierarchyData()
-},[])
-
-  const getDummyData = useCallback(() => {
-    return transformData(buildHierarchy(rawData));
-  }, [rawData]);
-
-  const dummyData = useMemo(() => getDummyData(), [getDummyData]);
-
-  // Memoize filterData
-  const getFilteredData = useCallback(() => {
-    return filterData(dummyData, searchTerm);
-  }, [dummyData, searchTerm]);
-
-  const filteredData = useMemo(() => getFilteredData(), [getFilteredData]);
-
+const SearchUser = ({mappedLevel, filteredData, searchTerm, setSearchTerm}) => {
   return (
     <div className="font-sans">
       <header className="bg-black text-white mb-2 text-start py-2 font-bold text-lg pl-2 border-gray-800">
@@ -185,7 +70,7 @@ useEffect(()=>{
             <div className="w-24 text-right text-sm">Amount</div>
           </div>
           {filteredData.map((item, index) => (
-            <GroupRow key={index} item={item} />
+            <GroupRow  key={index} item={item} mappedLevel={mappedLevel} />
           ))}
           {filteredData.length === 0 && (
             <div className="py-2 px-4 text-center text-gray-500 text-sm">

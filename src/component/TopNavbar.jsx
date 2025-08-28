@@ -1,17 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { AiFillSetting } from "react-icons/ai";
-import { BiUser } from "react-icons/bi";
 import NotificationModal from "./NotificationModal";
-import logo from "../assets/logo.png";
-import { IoSearchOutline } from "react-icons/io5";
 import Timer from "../component/timer/Timer";
-import {
-  IoIosArrowBack,
-  IoMdArrowDropleftCircle,
-  IoMdSettings,
-} from "react-icons/io";
-import { TiArrowBack, TiMessages } from "react-icons/ti";
-import RightSidebar from "./RightSidebar";
 import userLogo from "../assets/user-logo.png";
 import {
   Popover,
@@ -22,19 +11,14 @@ import {
   PopoverFooter,
   PopoverArrow,
   PopoverCloseButton,
-  PopoverAnchor,
   useToast,
-  Select,
 } from "@chakra-ui/react";
-import { RiMenu2Fill } from "react-icons/ri";
-import MobileSidebar from "./MobileSidebar";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import AdminChangePassword from "./AdminChangePassword";
 import AddAdminBalance from "../Modals/AddAdminBalance";
 import {
   removeFromLocalStorage,
-  retrieveUserDetails,
 } from "../redux/middleware/localstorageconfig";
 import { useTranslation } from "react-i18next";
 import { fetchGetRequest } from "../api/api";
@@ -224,14 +208,6 @@ const TopNavbar = () => {
           <option value="ru">🇷🇺 Russian</option>
         </select>
         <NotificationModal />
-        <RightSidebar
-          globalLoad={globalLoad}
-          setGlbalLoading={setGlbalLoading}
-        />
-        {/* <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 ... p-[1px]   rounded-[4px] lg:rounded-[6px]"> */}
-
-        {/* </div> */}
-
         <Popover>
           <PopoverTrigger>
             <div

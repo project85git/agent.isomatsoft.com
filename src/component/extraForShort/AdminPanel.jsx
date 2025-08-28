@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   useBreakpointValue,
   Avatar,
   Icon,
+  useToast,
 } from "@chakra-ui/react";
 import {
   FiHome,
@@ -30,6 +31,8 @@ import SearchUser from "./SearchUser";
 import RegisterUsers from "./RegisterUser";
 import FinancialTransactions from "./FinancialTransactions";
 import PasswordManagement from "./PasswordManagement";
+import { useSelector } from "react-redux";
+import { fetchGetRequest } from "../../api/api";
 
 // Colors
 const colors = {
@@ -47,6 +50,8 @@ const colors = {
 
 // Sidebar Header
 const HeaderNav = ({ navItems }) => {
+  const {user:adminData} = useSelector((state) => state.authReducer);
+
   const location = useLocation();
 
   return (
@@ -61,10 +66,10 @@ const HeaderNav = ({ navItems }) => {
           />
           <Flex direction="column">
             <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" color={"black"}>
-              Bossboss1
+              {adminData.username}
             </Text>
             <Text fontSize={{ base: "sm", md: "md" }} color={"#FF4040"}>
-              owner
+              {adminData.role_type}
             </Text>
           </Flex>
         </Flex>
@@ -156,19 +161,149 @@ const HeaderNav = ({ navItems }) => {
   );
 };
 
+// Step 1: Build hierarchy tree
+const buildHierarchy = (data) => {
+  const map = {};
+  const roots = [];
+
+  // Initialize all admins
+  data.forEach((admin) => {
+    map[admin.username] = { ...admin, children: [] };
+  });
+
+  // Link children to parents
+  data.forEach((admin) => {
+    if (map[admin.parent_admin_username]) {
+      map[admin.parent_admin_username].children.push(map[admin.username]);
+    } else {
+      roots.push(map[admin.username]); // top-level admins
+    }
+  });
+
+  return roots;
+};
+
+// Step 2: Transform hierarchy into GroupRow format
+const transformData = (nodes) => {
+  return nodes.map((node) => ({
+    group: `${node.username} (${
+      (node.children?.length || 0) + (node.users?.length || 0)
+    })`,
+    role: node.role_type,
+    amount: node.amount?.toFixed(2),
+    sub: [
+      ...transformData(node.children || []), // recursive admins
+      ...(node.users || []).map((user) => ({
+        group: `${user.username}`,
+        role: user.role_type,
+        amount: user.amount?.toFixed(2),
+        sub: [],
+      })),
+    ],
+  }));
+};
+
 // Main content area
 const ContentArea = ({ activePage }) => {
+  const [assignedRoles, setAssignedRoles] = useState([]);
+  const [ mappedLevel, setMappedLevel] = useState({})
+  const [searchTerm, setSearchTerm] = useState("");
+  const [rawData, setRawData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const getAdminLevel = async () => {
+    try {
+      const response = await fetchGetRequest(
+        `${import.meta.env.VITE_API_URL}/api/level/get-admin-level`
+      );
+      setAssignedRoles(response.data || []);
+      let mapLevel = {}
+      assignedRoles.forEach((ele)=>{
+        mapLevel[ele.name]=ele.lavel||ele.name
+      })
+      setMappedLevel(mapLevel)
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  const filterData = (data, term) => {
+    if (!term) return data;
+    const lowerTerm = term.toLowerCase();
+    return data
+      .map((group) => {
+        const matchesGroup =
+          group.group.toLowerCase().includes(lowerTerm) ||
+          group.role.toLowerCase().includes(lowerTerm);
+        const filteredSub = filterData(group.sub || [], term);
+        if (matchesGroup || filteredSub.length > 0) {
+          return { ...group, sub: filteredSub };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  };
+
+  const getHierarchyData = async (e) => {
+    try {
+      const url = `${
+        import.meta.env.VITE_API_URL
+      }/api/admin/get-hierarchy-data`;
+      const response = await fetchGetRequest(url);
+      toast({
+        title: response.message,
+        status: "success",
+        duration: 2000,
+        position: "top",
+        isClosable: true,
+      });
+
+      setLoading(false);
+      setRawData(response.data);
+      console.log(response.data, "response.data")
+    } catch (error) {
+      toast({
+        title: error?.response?.data?.message || "Something went wrong",
+        status: "error",
+        duration: 2000,
+        position: "top",
+        isClosable: true,
+      });
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getHierarchyData();
+  }, []);
+
+  const getDummyData = useCallback(() => {
+    return transformData(buildHierarchy(rawData));
+  }, [rawData]);
+
+  const dummyData = useMemo(() => getDummyData(), [getDummyData]);
+
+  // Memoize filterData
+  const getFilteredData = useCallback(() => {
+    return filterData(dummyData, searchTerm);
+  }, [dummyData, searchTerm]);
+
+  const filteredData = useMemo(() => getFilteredData(), [getFilteredData]);
+
+  useEffect(()=>{getAdminLevel()},[])
+
   const pages = {
     "/dashboard": (
       <Text className="text-gray-700">
         Dashboard content: System metrics and performance overview.
       </Text>
     ),
-    "/dashboard/admin-transfer": <TransferAmount />,
-    "/dashboard/financial": <FinancialTransactions />,
-    "/dashboard/admin-tree": <SearchUser />,
-    "/dashboard/user-register": <RegisterUsers />,
-    "/dashboard/admin-change-password": <PasswordManagement />,
+    "/dashboard/admin-transfer": <TransferAmount mappedLevel={ mappedLevel } />,
+    "/dashboard/financial": <FinancialTransactions mappedLevel={ mappedLevel } />,
+    "/dashboard/admin-tree": <SearchUser mappedLevel={ mappedLevel } searchTerm={ searchTerm } setSearchTerm={ setSearchTerm } filteredData={ filteredData } />,
+    "/dashboard/user-register": <RegisterUsers assignedRoles={ assignedRoles }/>,
+    "/dashboard/admin-change-password": <PasswordManagement mappedLevel={ mappedLevel } searchTerm={ searchTerm } setSearchTerm={ setSearchTerm } filteredData={ filteredData } />,
   };
 
   return (

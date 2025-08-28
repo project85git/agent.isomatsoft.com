@@ -11,14 +11,13 @@ const initialState = {
   share_percentage: "",
 };
 
-const AddNewUserAdmin = () => {
+const AddNewUserAdmin = ({assignedRoles}) => {
   const [formData, setFormData] = useState(initialState);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userExist, setUserExist] = useState(false);
   const [valid, setValid] = useState(false);
-  const [assignedRoles, setAssignedRoles] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,21 +54,6 @@ const AddNewUserAdmin = () => {
     }
     return () => clearTimeout(timer);
   }, [formData.username]);
-
-  const getAdminLevel = async () => {
-    try {
-      const response = await fetchGetRequest(
-        `${import.meta.env.VITE_API_URL}/api/level/get-admin-level`
-      );
-      setAssignedRoles(response.data || []);
-    } catch (error) {
-      console.log(error.message);
-    }
-  };
-
-  useEffect(() => {
-    getAdminLevel();
-  }, []);
 
   const createAdmin = async (e) => {
     e.preventDefault();
