@@ -202,16 +202,47 @@ const transformData = (nodes) => {
     ],
   }));
 };
-
+  // ✅ Extract all users from hierarchy
+  const extractAllMembers = (nodes) => {
+    let members = [];
+    nodes.forEach((node) => {
+      // push the admin itself
+      members.push({
+        username: node.username,
+        role_type: node.role_type,
+        amount: node.amount,
+        type: "admin",
+      });
+  
+      // push direct users
+      if (node.users && node.users.length > 0) {
+        const userEntries = node.users.map((user) => ({
+          username: user.username,
+          role_type: user.role_type,
+          amount: user.amount,
+          type: "user",
+        }));
+        members = [...members, ...userEntries];
+      }
+  
+      // recurse into children admins
+      if (node.children && node.children.length > 0) {
+        members = [...members, ...extractAllMembers(node.children)];
+      }
+    });
+    return members;
+  };
 // Main content area
 const ContentArea = ({ activePage }) => {
-  const [assignedRoles, setAssignedRoles] = useState([]);
-  const [ mappedLevel, setMappedLevel] = useState({})
-  const [searchTerm, setSearchTerm] = useState("");
-  const [rawData, setRawData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [ assignedRoles, setAssignedRoles ] = useState([]);
+  const [ mappedLevel, setMappedLevel ] = useState({})
+  const [ searchTerm, setSearchTerm ] = useState("");
+  const [ rawData, setRawData ] = useState([]);
+  const [ loading, setLoading ] = useState(false);
+  const [ allMembers, setAllMembers ] = useState([])
   const toast = useToast();
 
+  
   const getAdminLevel = async () => {
     try {
       const response = await fetchGetRequest(
@@ -261,7 +292,6 @@ const ContentArea = ({ activePage }) => {
 
       setLoading(false);
       setRawData(response.data);
-      console.log(response.data, "response.data")
     } catch (error) {
       toast({
         title: error?.response?.data?.message || "Something went wrong",
@@ -278,8 +308,12 @@ const ContentArea = ({ activePage }) => {
     getHierarchyData();
   }, []);
 
+
   const getDummyData = useCallback(() => {
-    return transformData(buildHierarchy(rawData));
+    const hierarchy = buildHierarchy(rawData);
+    const all = extractAllMembers(hierarchy);
+    setAllMembers(all);
+    return transformData(hierarchy);
   }, [rawData]);
 
   const dummyData = useMemo(() => getDummyData(), [getDummyData]);
@@ -294,13 +328,13 @@ const ContentArea = ({ activePage }) => {
   useEffect(()=>{getAdminLevel()},[])
 
   const pages = {
-    "/dashboard": (
+    "/": (
       <Text className="text-gray-700">
         Dashboard content: System metrics and performance overview.
       </Text>
     ),
-    "/dashboard/admin-transfer": <TransferAmount mappedLevel={ mappedLevel } />,
-    "/dashboard/financial": <FinancialTransactions mappedLevel={ mappedLevel } />,
+    "/dashboard/admin-transfer": <TransferAmount mappedLevel={ mappedLevel } allMembers={allMembers}/>,
+    "/dashboard/financial": <FinancialTransactions mappedLevel={ mappedLevel } allMembers={allMembers} />,
     "/dashboard/admin-tree": <SearchUser mappedLevel={ mappedLevel } searchTerm={ searchTerm } setSearchTerm={ setSearchTerm } filteredData={ filteredData } />,
     "/dashboard/user-register": <RegisterUsers assignedRoles={ assignedRoles }/>,
     "/dashboard/admin-change-password": <PasswordManagement mappedLevel={ mappedLevel } searchTerm={ searchTerm } setSearchTerm={ setSearchTerm } filteredData={ filteredData } />,
@@ -327,7 +361,7 @@ export default function AdminPanel() {
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   const navItems = [
-    { label: "Dashboard", icon: FiHome, path: "/dashboard" },
+    { label: "Dashboard", icon: FiHome, path: "/" },
     { label: "Transfer", icon: FiRepeat, path: "/dashboard/admin-transfer" },
     {
       label: "Reports",
