@@ -3,7 +3,7 @@ import { FaCalendarAlt } from "react-icons/fa";
 import axios from "axios";
 import { fetchGetRequest, sendPostRequest } from "../../api/api";
 
-const FinancialTransactions = () => {
+const FinancialTransactions = ({allMembers}) => {
   // State for filters
   const [quickFilter, setQuickFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -137,12 +137,9 @@ const FinancialTransactions = () => {
               className="w-full md:w-3/4 p-2 border"
             >
               <option value="">Select from user</option>
-              <option value="User1">User1</option>
-              <option value="User2">User2</option>
-              <option value="User3">User3</option>
-              <option value="User4">User4</option>
-              <option value="User5">User5</option>
-              <option value="User6">User6</option>
+              {allMembers.map(({username})=>
+              <option key={username} value="User6">{username}</option>
+              )}
             </select>
             <button
               type="submit"
@@ -217,3 +214,4 @@ const FinancialTransactions = () => {
 };
 
 export default FinancialTransactions;
+
